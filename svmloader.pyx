@@ -2,8 +2,6 @@ cimport cython
 import numpy as np
 from libc.stdlib cimport strtoul, strtod
 from libc.stdint cimport uint32_t
-from libcpp cimport bool as bool_t
-from libcpp.vector cimport vector
 from cpython cimport array
 from cython cimport view
 import scipy.sparse as sp
@@ -11,26 +9,31 @@ import scipy.sparse as sp
 
 @cython.boundscheck(False) # turn off bounds-checking for entire function
 @cython.wraparound(False)  # turn off negative index wrapping for entire function
-cdef _load_svmfile(fp, bool_t zero_based):
-    cdef vector[double] data
-    cdef vector[uint32_t] indices
-    cdef vector[uint32_t] indptr
-    cdef vector[int] labels
+cdef _load_svmfile(fp, bint zero_based):
+    cdef array.array data
+    cdef array.array indices
+    cdef array.array indptr
+    cdef array.array labels
     cdef char * s
     cdef char * end
-    cdef uint32_t idx
+    cdef uint32_t idx, sz
     cdef float value
     cdef bytes label, rest
 
-    indptr.push_back(0)
+    data = array('f')
+    indices = array('L')
+    indptr = array('L', [0])
+    labels = array('l')
 
+    sz = 0
     for line in fp:
         if line[0] == b'#':
             continue
 
         # get the label
         label, rest = line.split(maxsplit=1)
-        labels.push_back(int(label))
+        labels.resize_smart(len(labels)+1)
+        labels[len(labels)-1] = int(label)
         s = rest
 
         while s[0] != '\n' and s[0] != 0:
@@ -50,18 +53,18 @@ cdef _load_svmfile(fp, bool_t zero_based):
 
             if not zero_based:
                 idx -= 1
-            indices.push_back(idx)
-            data.push_back(val)
 
-        indptr.push_back(data.size())
+            indices.resize_smart(sz+1)
+            data.resize_smart(sz+1)
+            indices[sz] = idx
+            data[sz] = idx
+            sz += 1
 
-    cdef view.array data_view = <double[:data.size()]> data.data()
-    cdef view.array indices_view = <uint32_t[:indices.size()]> indices.data()
-    cdef view.array indptr_view = <uint32_t[:indptr.size()]> indptr.data()
-    cdef view.array labels_view = <int[:labels.size()]> labels.data()
+        indptr.resize_smart(len(indptr)+1)
+        indptr[len(indptr)-1] = len(data)
 
-    X = sp.csr_matrix((data_view.copy(), indices_view.copy(), indptr_view.copy()))
-    y = np.asarray(labels_view.copy())
+    X = sp.csr_matrix((data, indices, indptr))
+    y = np.asarray(labels)
 
     return (X, y)
 
