@@ -3,27 +3,23 @@ import numpy as np
 from libc.stdlib cimport strtoul, strtod
 from libc.stdint cimport uint32_t
 from cpython cimport array
-from cython cimport view
 import scipy.sparse as sp
 
 
 @cython.boundscheck(False) # turn off bounds-checking for entire function
 @cython.wraparound(False)  # turn off negative index wrapping for entire function
+@cython.initializedcheck(False)
 cdef _load_svmfile(fp, bint zero_based):
-    cdef array.array data
-    cdef array.array indices
-    cdef array.array indptr
-    cdef array.array labels
     cdef char * s
     cdef char * end
     cdef uint32_t idx, sz
     cdef float value
     cdef bytes label, rest
 
-    data = array('f')
-    indices = array('L')
-    indptr = array('L', [0])
-    labels = array('l')
+    cdef array.array[float] data = array('f')
+    cdef array.array[uint32_t] indices = array('L')
+    cdef array.array[uint32_t] indptr = array('L', [0])
+    cdef array.array[int] labels = array('l')
 
     sz = 0
     for line in fp:
