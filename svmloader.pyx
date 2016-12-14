@@ -17,16 +17,15 @@ cdef _load_svmfile(fp, bint zero_based):
     cdef double value
     cdef bytes label
     cdef bytes rest
-    cdef Py_ssize_t sz
-    cdef Py_ssize_t nrows
 
     cdef array.array data = array.array('d')
     cdef array.array indices = array.array('L')
     cdef array.array indptr = array.array('L', [0])
     cdef array.array labels = array.array('l')
 
-    sz = 0
-    nrows = 0
+    cdef Py_ssize_t sz = 0
+    cdef Py_ssize_t nrows = 0
+
     for line in fp:
         if line[0] == b'#':
             continue
@@ -88,6 +87,19 @@ def _openfile(filename):
 
 
 def load_svmfile(filename, nfeatures=None, zero_based=True):
+    """\
+    Load a sparse matrix from filename at svmlib format.
+
+    :param filename: the file name
+    :type filename: str
+    :param nfeatures: the number of columns (infered from file if is None)
+    :type nfeatures: int
+    :param zero_based: indicates if columns indexes are zero-based or one-based
+    :type zero_based: bool
+
+    :returns: (labels, sparse_matrix) tuple
+    :rtype: (:class:`numpy.ndarray`, :class:`scipy.sparse.csr_matrix`)
+    """
     fp = _openfile(filename)
     data, indices, indptr, y = _load_svmfile(fp, zero_based)
     fp.close()
@@ -100,6 +112,18 @@ def load_svmfile(filename, nfeatures=None, zero_based=True):
     return X, y
 
 def load_svmfiles(filenames, zero_based=True):
+    """\
+    Load a sparse matrix list from list of filenames at svmlib format.
+    The number of features will be infered from the maximum indice found
+    on all files.
+
+    :param filenames: the list of files names
+    :type filenames: list
+    :param zero_based: indicates if columns indexes are zero-based or one-based
+    :type zero_based: bool
+
+    :returns: a list [labels_0, matrix_0, .., labels_n, matrix_n]
+    """
     Xlst = []
     ylst = []
     for filename in filenames:
