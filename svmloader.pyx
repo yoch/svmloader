@@ -18,6 +18,7 @@ cdef _load_svmfile(fp, bint zero_based):
     cdef bytes label
     cdef bytes rest
     cdef Py_ssize_t sz
+    cdef Py_ssize_t nrows
 
     cdef array.array data = array.array('d')
     cdef array.array indices = array.array('L')
@@ -25,14 +26,17 @@ cdef _load_svmfile(fp, bint zero_based):
     cdef array.array labels = array.array('l')
 
     sz = 0
+    nrows = 0
     for line in fp:
         if line[0] == b'#':
             continue
 
         # get the label
         label, rest = line.split(maxsplit=1)
-        array.resize_smart(labels, len(labels)+1)
-        labels[len(labels)-1] = int(label)
+        nrows += 1
+
+        array.resize_smart(labels, nrows)
+        labels.data.as_ints[nrows-1] = int(label)
         s = rest
 
         while s[0] != '\n' and s[0] != 0:
@@ -59,8 +63,8 @@ cdef _load_svmfile(fp, bint zero_based):
             data.data.as_doubles[sz] = value
             sz += 1
 
-        array.resize_smart(indptr, len(indptr)+1)
-        indptr.data.as_uints[len(indptr)-1] = len(data)
+        array.resize_smart(indptr, nrows+1)
+        indptr.data.as_uints[nrows] = len(data)
 
     y = np.asarray(labels)
 
