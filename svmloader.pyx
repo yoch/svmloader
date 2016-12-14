@@ -14,12 +14,12 @@ cdef _load_svmfile(fp, bint zero_based):
     cdef char * s
     cdef char * end
     cdef uint32_t idx
-    cdef float value
+    cdef double value
     cdef bytes label
     cdef bytes rest
     cdef Py_ssize_t sz
 
-    cdef array.array data = array.array('f')
+    cdef array.array data = array.array('d')
     cdef array.array indices = array.array('L')
     cdef array.array indptr = array.array('L', [0])
     cdef array.array labels = array.array('l')
@@ -45,7 +45,7 @@ cdef _load_svmfile(fp, bint zero_based):
             assert s[0] == ':'
             s += 1
             # get value
-            val = strtod(s, &end)
+            value = strtod(s, &end)
             s = end
             while s[0]==' ':
                 s += 1
@@ -55,12 +55,12 @@ cdef _load_svmfile(fp, bint zero_based):
 
             array.resize_smart(indices, sz+1)
             array.resize_smart(data, sz+1)
-            indices[sz] = idx
-            data[sz] = idx
+            indices.data.as_uints[sz] = idx
+            data.data.as_doubles[sz] = value
             sz += 1
 
         array.resize_smart(indptr, len(indptr)+1)
-        indptr[len(indptr)-1] = len(data)
+        indptr.data.as_uints[len(indptr)-1] = len(data)
 
     y = np.asarray(labels)
 
