@@ -10,6 +10,20 @@ cases. *labels* are supposed to be of integer type, and data is parsed
 as *numpy.float64* type.
 
 
+Install
+-------
+
+Simply use `pip install svmloader`.
+
+Alternatively, you can clone the repository and run `python setup.py install`.
+
+
+Dependencies :
+- Cython
+- numpy
+- scipy
+
+
 Documentation
 -------------
 
