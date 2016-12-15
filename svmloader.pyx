@@ -77,7 +77,7 @@ cdef _load_svmfile(fp, Py_UCS4 dtype, Py_UCS4 ltype, bint zero_based):
             sz += 1
 
         array.resize_smart(indptr, nrows+1)
-        indptr.data.as_uints[nrows] = len(data)
+        indptr.data.as_uints[nrows] = sz
 
     y = np.asarray(labels)
 
