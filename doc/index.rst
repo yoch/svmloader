@@ -11,8 +11,10 @@ Welcome to svmloader's documentation!
 sparse data written at libsvm format.
 
 It is not functionnaly equivalent to :class:`sklearn.datasets.load_svmlight_file`, 
-and handle only the simplest cases. `labels` are supposed to be of integer type, 
-and data is parsed as `numpy.float64` type.
+and handle only the simplest cases.
+
+The `labels` type supported are `int` and `float` (default `int`), and data can be parsed as `numpy.float64` or `numpy.float32` type (`float64` by default).  
+Multiple labels currently are not supported.
 
 
 .. toctree::
@@ -20,6 +22,6 @@ and data is parsed as `numpy.float64` type.
 
 .. automodule:: svmloader
 
-	.. autofunction:: load_svmfile(filename, nfeatures=None, zero_based=True)
-	.. autofunction:: load_svmfiles(filenames, zero_based=True)
+	.. autofunction:: load_svmfile(filename, dtype='d', ltype='l', nfeatures=None, zero_based=True)
+	.. autofunction:: load_svmfiles(filenames, dtype='d', ltype='l', zero_based=True)
 
