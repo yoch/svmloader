@@ -96,6 +96,8 @@ def load_svmfile(filename, Py_UCS4 dtype=u'd', Py_UCS4 ltype=u'l', nfeatures=Non
     """\
     Load a sparse matrix from filename at svmlib format.
 
+    Files in .gz or .bz2 format will be uncompressed on the fly.
+
     :param filename: the file name
     :type filename: str
     :param dtype: type of data, must be either 'd' (double) or 'f' (float)
@@ -106,7 +108,6 @@ def load_svmfile(filename, Py_UCS4 dtype=u'd', Py_UCS4 ltype=u'l', nfeatures=Non
     :type nfeatures: int
     :param zero_based: indicates if columns indexes are zero-based or one-based
     :type zero_based: bool
-
     :returns: (labels, sparse_matrix) tuple
     :rtype: (:class:`numpy.ndarray`, :class:`scipy.sparse.csr_matrix`)
     """
@@ -127,6 +128,9 @@ def load_svmfile(filename, Py_UCS4 dtype=u'd', Py_UCS4 ltype=u'l', nfeatures=Non
 def load_svmfiles(filenames, Py_UCS4 dtype=u'd', Py_UCS4 ltype=u'l', zero_based=True):
     """\
     Load a sparse matrix list from list of filenames at svmlib format.
+
+    Files in .gz or .bz2 format will be uncompressed on the fly.
+
     The number of features will be infered from the maximum indice found
     on all files.
 
@@ -138,7 +142,6 @@ def load_svmfiles(filenames, Py_UCS4 dtype=u'd', Py_UCS4 ltype=u'l', zero_based=
     :type ltype: str
     :param zero_based: indicates if columns indexes are zero-based or one-based
     :type zero_based: bool
-
     :returns: a list [labels_0, matrix_0, .., labels_n, matrix_n]
     """
     assert(dtype==u'f' or dtype==u'd'), 'dtype must be "d" or "f"'

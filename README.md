@@ -9,6 +9,7 @@ It is not functionnaly equivalent to
 cases. *labels* are supposed to be of integer type, and data is parsed
 as *numpy.float64* type.
 
+Compressed data in .gz or .bz2 format is supported as well.
 
 Install
 -------
