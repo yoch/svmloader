@@ -22,6 +22,6 @@ Multiple labels currently are not supported.
 
 .. automodule:: svmloader
 
-	.. autofunction:: load_svmfile(filename, dtype='d', ltype='l', nfeatures=None, zero_based=True)
-	.. autofunction:: load_svmfiles(filenames, dtype='d', ltype='l', zero_based=True)
+    .. autofunction:: load_svmfile(filename, dtype='d', ltype='i', nfeatures=None, zero_based=True)
+    .. autofunction:: load_svmfiles(filenames, dtype='d', ltype='i', zero_based=True)
 
