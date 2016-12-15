@@ -31,7 +31,7 @@ cdef _load_svmfile(fp, Py_UCS4 dtype, Py_UCS4 ltype, bint zero_based):
             continue
 
         # get the label
-        label, rest = line.split(maxsplit=1)
+        label, rest = line.split(None, 1)
         nrows += 1
 
         array.resize_smart(labels, nrows)
