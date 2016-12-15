@@ -41,7 +41,7 @@ cdef _load_svmfile(fp, Py_UCS4 dtype, Py_UCS4 ltype, bint zero_based):
             labels.data.as_doubles[nrows-1] = float(label)
         s = rest
 
-        while s[0] != '\n' and s[0] != 0:
+        while s[0] != '#' and s[0] != '\n' and s[0] != 0:
             # get index
             idx = strtoul(s, &end, 10)
             if s==end:
