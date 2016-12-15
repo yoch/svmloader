@@ -4,7 +4,7 @@ from Cython.Build import build_ext # , cythonize
 
 setup(
   name = 'svmloader',
-  version = '0.2',
+  version = '0.3',
   description = 'a simplist but very fast parser for sparse matrix at libsvm format',
   author = 'J. Melka',
   url = 'https://github.com/yoch/svmloader',
