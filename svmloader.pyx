@@ -10,7 +10,7 @@ import scipy.sparse as sp
 @cython.boundscheck(False) # turn off bounds-checking for entire function
 @cython.wraparound(False)  # turn off negative index wrapping for entire function
 #@cython.initializedcheck(False)
-cdef _load_svmfile(fp, Py_UCS4 dtype, Py_UCS4 ltype, bint zero_based):
+cdef _load_svmfile(fp, dtype, ltype, bint zero_based):
     cdef char * s
     cdef char * end
     cdef uint32_t idx
@@ -18,9 +18,11 @@ cdef _load_svmfile(fp, Py_UCS4 dtype, Py_UCS4 ltype, bint zero_based):
     cdef bytes label
     cdef bytes rest
 
+    cdef char dt = 'f' if dtype == 'f' else 'd'  # defaut is double
+    cdef char lt = 'd' if ltype == 'd' else 'i'  # default is int
     cdef array.array data = array.array(dtype)
-    cdef array.array indices = array.array('L')
-    cdef array.array indptr = array.array('L', [0])
+    cdef array.array indices = array.array('I')
+    cdef array.array indptr = array.array('I', [0])
     cdef array.array labels = array.array(ltype)
 
     cdef Py_ssize_t sz = 0
@@ -35,7 +37,7 @@ cdef _load_svmfile(fp, Py_UCS4 dtype, Py_UCS4 ltype, bint zero_based):
         nrows += 1
 
         array.resize_smart(labels, nrows)
-        if ltype == u'l':
+        if lt == 'i':
             labels.data.as_ints[nrows-1] = int(label)
         else:
             labels.data.as_doubles[nrows-1] = float(label)
@@ -70,7 +72,7 @@ cdef _load_svmfile(fp, Py_UCS4 dtype, Py_UCS4 ltype, bint zero_based):
             array.resize_smart(indices, sz+1)
             array.resize_smart(data, sz+1)
             indices.data.as_uints[sz] = idx
-            if dtype == u'd':
+            if dt == 'd':
                 data.data.as_doubles[sz] = value
             else:
                 data.data.as_floats[sz] = value
@@ -79,9 +81,10 @@ cdef _load_svmfile(fp, Py_UCS4 dtype, Py_UCS4 ltype, bint zero_based):
         array.resize_smart(indptr, nrows+1)
         indptr.data.as_uints[nrows] = sz
 
-    y = np.asarray(labels)
-
-    return (data, indices, indptr, y)
+    return (np.frombuffer(data, dtype=dtype), 
+            np.frombuffer(indices, dtype='I'),
+            np.frombuffer(indptr, dtype='I'), 
+            np.frombuffer(labels, dtype=ltype))
 
 
 
@@ -100,7 +103,7 @@ def _openfile(filename):
     return fp
 
 
-def load_svmfile(filename, Py_UCS4 dtype=u'd', Py_UCS4 ltype=u'l', nfeatures=None, zero_based=True):
+def load_svmfile(filename, dtype='d', ltype='i', nfeatures=None, zero_based=True):
     """\
     Load a sparse matrix from filename at svmlib format.
 
@@ -110,7 +113,7 @@ def load_svmfile(filename, Py_UCS4 dtype=u'd', Py_UCS4 ltype=u'l', nfeatures=Non
     :type filename: str
     :param dtype: type of data, must be either 'd' (double) or 'f' (float)
     :type dtype: str
-    :param ltype: type of labels, must be either 'l' (int) or 'd' (double)
+    :param ltype: type of labels, must be either 'i' (int) or 'd' (double)
     :type ltype: str
     :param nfeatures: the number of columns (infered from file if is None)
     :type nfeatures: int
@@ -119,8 +122,8 @@ def load_svmfile(filename, Py_UCS4 dtype=u'd', Py_UCS4 ltype=u'l', nfeatures=Non
     :returns: (labels, sparse_matrix) tuple
     :rtype: (:class:`numpy.ndarray`, :class:`scipy.sparse.csr_matrix`)
     """
-    assert(dtype==u'f' or dtype==u'd'), 'dtype must be "d" or "f"'
-    assert(ltype==u'l' or ltype==u'd'), 'ltype must be "l" or "d"'
+    assert(dtype=='f' or dtype=='d'), 'dtype must be "d" or "f"'
+    assert(ltype=='i' or ltype=='d'), 'ltype must be "i" or "d"'
 
     fp = _openfile(filename)
     data, indices, indptr, y = _load_svmfile(fp, dtype, ltype, zero_based)
@@ -133,7 +136,7 @@ def load_svmfile(filename, Py_UCS4 dtype=u'd', Py_UCS4 ltype=u'l', nfeatures=Non
 
     return X, y
 
-def load_svmfiles(filenames, Py_UCS4 dtype=u'd', Py_UCS4 ltype=u'l', zero_based=True):
+def load_svmfiles(filenames, dtype='d', ltype='i', zero_based=True):
     """\
     Load a sparse matrix list from list of filenames at svmlib format.
 
@@ -146,14 +149,14 @@ def load_svmfiles(filenames, Py_UCS4 dtype=u'd', Py_UCS4 ltype=u'l', zero_based=
     :type filenames: list
     :param dtype: type of data, must be either 'd' (double) or 'f' (float)
     :type dtype: str
-    :param ltype: type of labels, must be either 'l' (int) or 'd' (double)
+    :param ltype: type of labels, must be either 'i' (int) or 'd' (double)
     :type ltype: str
     :param zero_based: indicates if columns indexes are zero-based or one-based
     :type zero_based: bool
     :returns: a list [labels_0, matrix_0, .., labels_n, matrix_n]
     """
-    assert(dtype==u'f' or dtype==u'd'), 'dtype must be "d" or "f"'
-    assert(ltype==u'l' or ltype==u'd'), 'ltype must be "l" or "d"'
+    assert(dtype=='f' or dtype=='d'), 'dtype must be "d" or "f"'
+    assert(ltype=='i' or ltype=='d'), 'ltype must be "i" or "d"'
 
     Xlst = []
     ylst = []
