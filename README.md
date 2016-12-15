@@ -28,3 +28,15 @@ Documentation
 -------------
 
 See [here](http://svmloader.readthedocs.io/en/latest/).
+
+
+Benchmarks
+----------
+
+Benchmarks on data taken from [libsvm datasets](https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/).
+
+
+| dataset *(shape, nonzeros)*                       | sklearn  | svmloader |
+| :---                                              |     ---: |    ---: |
+| **mnist.scale** (60000x780, 8994156)              | 78.1s    |  1.5s   |
+| **rcv1_test.multiclass** (518571x47236, 33486015) | 1004.3s  |  7.9s   |
