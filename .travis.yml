@@ -17,16 +17,16 @@ cache:
 addons:
   apt:
     packages:
-      - python-numpy
-      - python-scipy
-#      - libatlas-dev
-#      - libatlas-base-dev
-#      - liblapack-dev
-#      - gfortran
+#      - python-numpy
+#      - python-scipy
+      - libatlas-dev
+      - libatlas-base-dev
+      - liblapack-dev
+      - gfortran
 
 before_install:
-#  - pip install numpy
-#  - pip install scipy
+  - pip install -v numpy
+  - pip install -v scipy
   - pip install Cython
 
 install:
