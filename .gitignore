@@ -2,3 +2,7 @@
 /*.c
 /build
 /dist
+/doc/_build
+/doc/_static
+/doc/_templates
+/svmloader.egg-info
