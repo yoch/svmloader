@@ -25,8 +25,8 @@ addons:
       - gfortran
 
 before_install:
-  - pip install -v numpy
-  - pip install -v scipy
+  - pip install numpy
+  - travis_wait pip install scipy
   - pip install Cython
 
 install:
