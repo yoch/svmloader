@@ -10,7 +10,7 @@ import scipy.sparse as sp
 @cython.boundscheck(False) # turn off bounds-checking for entire function
 @cython.wraparound(False)  # turn off negative index wrapping for entire function
 #@cython.initializedcheck(False)
-cdef _load_svmfile(fp, bint zero_based):
+cdef _load_svmfile(fp, Py_UCS4 dtype, Py_UCS4 ltype, bint zero_based):
     cdef char * s
     cdef char * end
     cdef uint32_t idx
@@ -18,16 +18,16 @@ cdef _load_svmfile(fp, bint zero_based):
     cdef bytes label
     cdef bytes rest
 
-    cdef array.array data = array.array('d')
+    cdef array.array data = array.array(dtype)
     cdef array.array indices = array.array('L')
     cdef array.array indptr = array.array('L', [0])
-    cdef array.array labels = array.array('l')
+    cdef array.array labels = array.array(ltype)
 
     cdef Py_ssize_t sz = 0
     cdef Py_ssize_t nrows = 0
 
     for line in fp:
-        if line[0] == b'#':
+        if line[0] == '#':
             continue
 
         # get the label
@@ -35,7 +35,10 @@ cdef _load_svmfile(fp, bint zero_based):
         nrows += 1
 
         array.resize_smart(labels, nrows)
-        labels.data.as_ints[nrows-1] = int(label)
+        if ltype == u'l':
+            labels.data.as_ints[nrows-1] = int(label)
+        else:
+            labels.data.as_doubles[nrows-1] = float(label)
         s = rest
 
         while s[0] != '\n' and s[0] != 0:
@@ -59,7 +62,10 @@ cdef _load_svmfile(fp, bint zero_based):
             array.resize_smart(indices, sz+1)
             array.resize_smart(data, sz+1)
             indices.data.as_uints[sz] = idx
-            data.data.as_doubles[sz] = value
+            if dtype == u'd':
+                data.data.as_doubles[sz] = value
+            else:
+                data.data.as_floats[sz] = value
             sz += 1
 
         array.resize_smart(indptr, nrows+1)
@@ -86,12 +92,16 @@ def _openfile(filename):
     return fp
 
 
-def load_svmfile(filename, nfeatures=None, zero_based=True):
+def load_svmfile(filename, Py_UCS4 dtype=u'd', Py_UCS4 ltype=u'l', nfeatures=None, zero_based=True):
     """\
     Load a sparse matrix from filename at svmlib format.
 
     :param filename: the file name
     :type filename: str
+    :param dtype: type of data, must be either 'd' (double) or 'f' (float)
+    :type dtype: str
+    :param ltype: type of labels, must be either 'l' (int) or 'd' (double)
+    :type ltype: str
     :param nfeatures: the number of columns (infered from file if is None)
     :type nfeatures: int
     :param zero_based: indicates if columns indexes are zero-based or one-based
@@ -100,8 +110,11 @@ def load_svmfile(filename, nfeatures=None, zero_based=True):
     :returns: (labels, sparse_matrix) tuple
     :rtype: (:class:`numpy.ndarray`, :class:`scipy.sparse.csr_matrix`)
     """
+    assert(dtype==u'f' or dtype==u'd'), 'dtype must be "d" or "f"'
+    assert(ltype==u'l' or ltype==u'd'), 'ltype must be "l" or "d"'
+
     fp = _openfile(filename)
-    data, indices, indptr, y = _load_svmfile(fp, zero_based)
+    data, indices, indptr, y = _load_svmfile(fp, dtype, ltype, zero_based)
     fp.close()
 
     if nfeatures is None:
@@ -111,7 +124,7 @@ def load_svmfile(filename, nfeatures=None, zero_based=True):
 
     return X, y
 
-def load_svmfiles(filenames, zero_based=True):
+def load_svmfiles(filenames, Py_UCS4 dtype=u'd', Py_UCS4 ltype=u'l', zero_based=True):
     """\
     Load a sparse matrix list from list of filenames at svmlib format.
     The number of features will be infered from the maximum indice found
@@ -119,16 +132,23 @@ def load_svmfiles(filenames, zero_based=True):
 
     :param filenames: the list of files names
     :type filenames: list
+    :param dtype: type of data, must be either 'd' (double) or 'f' (float)
+    :type dtype: str
+    :param ltype: type of labels, must be either 'l' (int) or 'd' (double)
+    :type ltype: str
     :param zero_based: indicates if columns indexes are zero-based or one-based
     :type zero_based: bool
 
     :returns: a list [labels_0, matrix_0, .., labels_n, matrix_n]
     """
+    assert(dtype==u'f' or dtype==u'd'), 'dtype must be "d" or "f"'
+    assert(ltype==u'l' or ltype==u'd'), 'ltype must be "l" or "d"'
+
     Xlst = []
     ylst = []
     for filename in filenames:
         fp = _openfile(filename)
-        data, indices, indptr, y = _load_svmfile(fp, zero_based)
+        data, indices, indptr, y = _load_svmfile(fp, dtype, ltype, zero_based)
         Xlst.append((data, indices, indptr))
         ylst.append(y)
         fp.close()
