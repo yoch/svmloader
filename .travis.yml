@@ -7,8 +7,11 @@ python:
   - "3.4"
   - "3.5"
 
+virtualenv:
+  system_site_packages: true
+
 before_install:
-  - sudo apt-get install -qq python-scipy python3-scipy
+  - sudo apt-get install -qq python-scipy
   - pip install Cython
 
 install:
