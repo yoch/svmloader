@@ -44,20 +44,28 @@ cdef _load_svmfile(fp, Py_UCS4 dtype, Py_UCS4 ltype, bint zero_based):
         while s[0] != '\n' and s[0] != 0:
             # get index
             idx = strtoul(s, &end, 10)
+            if s==end:
+                raise ValueError('invalid index')
             s = end
+
+            if not zero_based:
+                if idx==0:
+                    raise ValueError('invalid index 0 with one-based indexes')
+                idx -= 1
+
             # ensure we have correct separator
             while s[0]==' ':
                 s += 1
-            assert s[0] == ':'
+            if s[0] != ':':
+                raise ValueError('invalid separator')
             s += 1
             # get value
             value = strtod(s, &end)
+            if s==end:
+                raise ValueError('invalid value')
             s = end
             while s[0]==' ':
                 s += 1
-
-            if not zero_based:
-                idx -= 1
 
             array.resize_smart(indices, sz+1)
             array.resize_smart(data, sz+1)
