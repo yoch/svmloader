@@ -7,11 +7,23 @@ python:
   - "3.4"
   - "3.5"
 
-virtualenv:
-  system_site_packages: true
+#virtualenv:
+#  system_site_packages: true
+
+cache:
+  - apt
+
+addons:
+  apt:
+    packages:
+      - libatlas-dev
+      - libatlas-base-dev
+      - liblapack-dev
+      - gfortran
 
 before_install:
-  - sudo apt-get install -qq python-scipy
+  - pip install numpy
+  - pip install scipy
   - pip install Cython
 
 install:
