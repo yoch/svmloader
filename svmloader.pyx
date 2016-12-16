@@ -1,5 +1,5 @@
 cimport cython
-from libc.stdlib cimport strtoul, strtod
+from libc.stdlib cimport strtol, strtoul, strtod
 from libc.stdint cimport uint32_t
 import array
 from cpython cimport array
@@ -15,8 +15,6 @@ cdef _load_svmfile(fp, dtype, ltype, bint zero_based):
     cdef char * end
     cdef uint32_t idx
     cdef double value
-    cdef bytes label
-    cdef bytes rest
 
     cdef char dt = 'f' if dtype == 'f' else 'd'  # defaut is double
     cdef char lt = 'd' if ltype == 'd' else 'i'  # default is int
@@ -29,19 +27,22 @@ cdef _load_svmfile(fp, dtype, ltype, bint zero_based):
     cdef Py_ssize_t nrows = 0
 
     for line in fp:
-        if line[0] == '#':
+        s = line
+
+        if s[0] == '#':
             continue
 
         # get the label
-        label, rest = line.split(None, 1)
         nrows += 1
 
         array.resize_smart(labels, nrows)
         if lt == 'i':
-            labels.data.as_ints[nrows-1] = int(label)
+            labels.data.as_ints[nrows-1] = strtol(s, &end, 10)
         else:
-            labels.data.as_doubles[nrows-1] = float(label)
-        s = rest
+            labels.data.as_doubles[nrows-1] = strtod(s, &end)
+        if s==end:
+            raise ValueError('invalid label')
+        s = end
 
         while s[0] != '#' and s[0] != '\n' and s[0] != 0:
             # get index
@@ -61,6 +62,7 @@ cdef _load_svmfile(fp, dtype, ltype, bint zero_based):
             if s[0] != ':':
                 raise ValueError('invalid separator')
             s += 1
+
             # get value
             value = strtod(s, &end)
             if s==end:
@@ -69,14 +71,14 @@ cdef _load_svmfile(fp, dtype, ltype, bint zero_based):
             while s[0]==' ':
                 s += 1
 
-            array.resize_smart(indices, sz+1)
-            array.resize_smart(data, sz+1)
-            indices.data.as_uints[sz] = idx
-            if dt == 'd':
-                data.data.as_doubles[sz] = value
-            else:
-                data.data.as_floats[sz] = value
             sz += 1
+            array.resize_smart(indices, sz)
+            array.resize_smart(data, sz)
+            indices.data.as_uints[sz-1] = idx
+            if dt == 'd':
+                data.data.as_doubles[sz-1] = value
+            else:
+                data.data.as_floats[sz-1] = value
 
         array.resize_smart(indptr, nrows+1)
         indptr.data.as_uints[nrows] = sz
