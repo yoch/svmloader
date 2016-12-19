@@ -10,7 +10,7 @@ import scipy.sparse as sp
 @cython.boundscheck(False) # turn off bounds-checking for entire function
 @cython.wraparound(False)  # turn off negative index wrapping for entire function
 #@cython.initializedcheck(False)
-cdef _load_svmfile(fp, dtype, ltype, bint zero_based):
+cdef _load_svmfile(fp, dtype, ltype, bint zero_based, bint multilabels):
     cdef char * s
     cdef char * end
     cdef Py_ssize_t idx
@@ -22,7 +22,12 @@ cdef _load_svmfile(fp, dtype, ltype, bint zero_based):
     cdef array.array data = array.array(dtype)
     cdef array.array indices = array.array('I')
     cdef array.array indptr = array.array('I', [0])
-    cdef array.array labels = array.array(ltype)
+
+    if not multilabels:
+        labels = array.array(ltype)
+    else:
+        labels = []
+        cls = float if lt == 'd' else int
 
     cdef Py_ssize_t sz = 0
     cdef Py_ssize_t nrows = 0
@@ -33,18 +38,25 @@ cdef _load_svmfile(fp, dtype, ltype, bint zero_based):
         if s[0] == '#':
             continue
 
-        # get the label
         nrows += 1
 
-        array.resize_smart(labels, nrows)
-        if lt == 'i':
-            labels.data.as_ints[nrows-1] = strtol(s, &end, 10)
+        # get the label
+        if not multilabels:
+            array.resize_smart(labels, nrows)
+            if lt == 'i':
+                labels[nrows-1] = strtol(s, &end, 10)
+            else:
+                labels[nrows-1] = strtod(s, &end)
+            if s==end:
+                raise ValueError('invalid label')
+            s = end
         else:
-            labels.data.as_doubles[nrows-1] = strtod(s, &end)
-        if s==end:
-            raise ValueError('invalid label')
-        s = end
+            labl, line = line.split(None, 1)
+            s = line
+            label = sorted([cls(val) for val in labl.split(b',')])
+            labels.append(tuple(label))
 
+        # process the line
         last_idx = -1
         while s[0] != '#' and s[0] != '\n' and s[0] != 0:
             # check against negatives values because strtoul negate negatives values
@@ -94,16 +106,18 @@ cdef _load_svmfile(fp, dtype, ltype, bint zero_based):
         array.resize_smart(indptr, nrows+1)
         indptr.data.as_uints[nrows] = sz
 
+    if not multilabels:
+        labels = np.frombuffer(labels, dtype=ltype)
+
     return (np.frombuffer(data, dtype=dtype),
             np.frombuffer(indices, dtype='I'),
             np.frombuffer(indptr, dtype='I'),
-            np.frombuffer(labels, dtype=ltype))
+            labels)
 
 
-
-import os.path
 
 def _openfile(filename):
+    import os.path
     _, ext = os.path.splitext(filename)
     if ext == ".gz":
         import gzip
@@ -116,7 +130,7 @@ def _openfile(filename):
     return fp
 
 
-def load_svmfile(filename, dtype='d', ltype='i', nfeatures=None, zero_based=True):
+def load_svmfile(filename, dtype='d', ltype='i', nfeatures=None, zero_based=True, multilabels=False):
     """\
     Load a sparse matrix from filename at svmlib format.
 
@@ -139,7 +153,7 @@ def load_svmfile(filename, dtype='d', ltype='i', nfeatures=None, zero_based=True
     assert(ltype=='i' or ltype=='d'), 'ltype must be "i" or "d"'
 
     fp = _openfile(filename)
-    data, indices, indptr, y = _load_svmfile(fp, dtype, ltype, zero_based)
+    data, indices, indptr, y = _load_svmfile(fp, dtype, ltype, zero_based, multilabels)
     fp.close()
 
     if nfeatures is None:
@@ -149,7 +163,7 @@ def load_svmfile(filename, dtype='d', ltype='i', nfeatures=None, zero_based=True
 
     return X, y
 
-def load_svmfiles(filenames, dtype='d', ltype='i', zero_based=True):
+def load_svmfiles(filenames, dtype='d', ltype='i', zero_based=True, multilabels=False):
     """\
     Load a sparse matrix list from list of filenames at svmlib format.
 
@@ -175,7 +189,7 @@ def load_svmfiles(filenames, dtype='d', ltype='i', zero_based=True):
     ylst = []
     for filename in filenames:
         fp = _openfile(filename)
-        data, indices, indptr, y = _load_svmfile(fp, dtype, ltype, zero_based)
+        data, indices, indptr, y = _load_svmfile(fp, dtype, ltype, zero_based, multilabels)
         Xlst.append((data, indices, indptr))
         ylst.append(y)
         fp.close()
