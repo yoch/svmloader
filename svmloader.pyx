@@ -146,6 +146,8 @@ def load_svmfile(filename, dtype='d', ltype='i', nfeatures=None, zero_based=True
     :type nfeatures: int
     :param zero_based: indicates if columns indexes are zero-based or one-based
     :type zero_based: bool
+    :param multilabels: indicates if file uses multiple labels per row
+    :type multilabels: bool
     :returns: (labels, sparse_matrix) tuple
     :rtype: (:class:`numpy.ndarray`, :class:`scipy.sparse.csr_matrix`)
     """
@@ -180,6 +182,8 @@ def load_svmfiles(filenames, dtype='d', ltype='i', zero_based=True, multilabels=
     :type ltype: str
     :param zero_based: indicates if columns indexes are zero-based or one-based
     :type zero_based: bool
+    :param multilabels: indicates if file uses multiple labels per row
+    :type multilabels: bool
     :returns: a list [labels_0, matrix_0, .., labels_n, matrix_n]
     """
     assert(dtype=='f' or dtype=='d'), 'dtype must be "d" or "f"'
