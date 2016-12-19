@@ -1,6 +1,6 @@
 cimport cython
 from libc.stdlib cimport strtol, strtoul, strtod
-from libc.stdint cimport uint32_t
+from libc.limits cimport UINT_MAX
 import array
 from cpython cimport array
 import numpy as np
@@ -13,7 +13,8 @@ import scipy.sparse as sp
 cdef _load_svmfile(fp, dtype, ltype, bint zero_based):
     cdef char * s
     cdef char * end
-    cdef uint32_t idx
+    cdef Py_ssize_t idx
+    cdef Py_ssize_t last_idx
     cdef double value
 
     cdef char dt = 'f' if dtype == 'f' else 'd'  # defaut is double
@@ -44,20 +45,30 @@ cdef _load_svmfile(fp, dtype, ltype, bint zero_based):
             raise ValueError('invalid label')
         s = end
 
+        last_idx = -1
         while s[0] != '#' and s[0] != '\n' and s[0] != 0:
+            # check against negatives values because strtoul negate negatives values
+            if s[0] == '-':
+                raise ValueError('invalid index (negative)')
             # get index
             idx = strtoul(s, &end, 10)
-            if s==end:
+            if s == end:
                 raise ValueError('invalid index')
+            if idx > UINT_MAX:
+                raise ValueError('invalid index (overflow)')
             s = end
 
             if not zero_based:
-                if idx==0:
+                if idx == 0:
                     raise ValueError('invalid index 0 with one-based indexes')
                 idx -= 1
 
+            if idx <= last_idx:
+                raise ValueError('indices should be sorted and uniques')
+            last_idx = idx
+
             # ensure we have correct separator
-            while s[0]==' ':
+            while s[0] == ' ':
                 s += 1
             if s[0] != ':':
                 raise ValueError('invalid separator')
@@ -65,10 +76,10 @@ cdef _load_svmfile(fp, dtype, ltype, bint zero_based):
 
             # get value
             value = strtod(s, &end)
-            if s==end:
+            if s == end:
                 raise ValueError('invalid value')
             s = end
-            while s[0]==' ':
+            while s[0] == ' ':
                 s += 1
 
             sz += 1
@@ -83,9 +94,9 @@ cdef _load_svmfile(fp, dtype, ltype, bint zero_based):
         array.resize_smart(indptr, nrows+1)
         indptr.data.as_uints[nrows] = sz
 
-    return (np.frombuffer(data, dtype=dtype), 
+    return (np.frombuffer(data, dtype=dtype),
             np.frombuffer(indices, dtype='I'),
-            np.frombuffer(indptr, dtype='I'), 
+            np.frombuffer(indptr, dtype='I'),
             np.frombuffer(labels, dtype=ltype))
 
 
