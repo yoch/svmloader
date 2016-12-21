@@ -1,3 +1,6 @@
+dist: trusty
+sudo: false
+
 language: python
 
 python:
@@ -7,9 +10,6 @@ python:
   - "3.4"
   - "3.5"
 
-#virtualenv:
-#  system_site_packages: true
-
 cache:
   - apt
   - pip
@@ -17,16 +17,21 @@ cache:
 addons:
   apt:
     packages:
-#      - python-numpy
-#      - python-scipy
-      - libatlas-dev
-      - libatlas-base-dev
-      - liblapack-dev
-      - gfortran
+      - python-numpy
+      - python-scipy
+      - python3-numpy
+      - python3-scipy
+#      - libatlas-dev
+#      - libatlas-base-dev
+#      - liblapack-dev
+#      - gfortran
+
+virtualenv:
+  system_site_packages: true
 
 before_install:
-  - pip install numpy
-  - travis_wait pip install scipy
+#  - pip install numpy
+#  - travis_wait pip install scipy
   - pip install Cython
 
 install:

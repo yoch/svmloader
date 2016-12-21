@@ -1,3 +1,6 @@
+
+[![Build Status](https://travis-ci.org/yoch/svmloader.svg?branch=tests)](https://travis-ci.org/yoch/svmloader)
+
 svmloader
 =========
 
