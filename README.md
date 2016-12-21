@@ -1,14 +1,14 @@
 svmloader
 =========
 
-**svmloader** is a simplist but very fast python module (written in
-cython) to load sparse data written at libsvm format.
+**svmloader** is a very fast python module (written in cython) 
+intended to load sparse data written at libsvm format.
 
 It is not fully equivalent to `sklearn.datasets.load_svmlight_file`, 
 in particular `query_id` are not supported and `dtype` is restricted.
 
-However, the types of data and labels are distinguished.
-The `labels` types supported are `int` and `float` (default `int`), 
+The types of data and labels are distinguished.
+The labels types supported are `int` and `float` (default `int`), 
 and data can be parsed as `numpy.float64` or `numpy.float32` type (`float64` by default).
 
 Compressed data in .gz or .bz2 format is supported as well.
@@ -22,7 +22,6 @@ Alternatively, you can clone the repository and run `python setup.py install`.
 
 
 Dependencies :
-- Cython
 - numpy
 - scipy
 
