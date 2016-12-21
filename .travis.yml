@@ -14,21 +14,18 @@ cache:
   - apt
   - pip
 
-addons:
-  apt:
-    packages:
-      - libatlas-dev
-      - libatlas-base-dev
-      - liblapack-dev
-      - gfortran
-
-#virtualenv:
-#  system_site_packages: true
+#addons:
+#  apt:
+#    packages:
+#      - libatlas-dev
+#      - libatlas-base-dev
+#      - liblapack-dev
+#      - gfortran
 
 before_install:
-  - pip wheel numpy
-  - travis_wait pip wheel scipy
-  - pip wheel Cython
+#  - pip wheel numpy
+#  - travis_wait pip wheel scipy
+#  - pip wheel Cython
   - pip install --use-wheel numpy
   - pip install --use-wheel scipy
   - pip install --use-wheel Cython
