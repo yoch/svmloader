@@ -6,22 +6,28 @@
 Welcome to svmloader's documentation!
 =====================================
 
+.. toctree::
+   :maxdepth: 2
+
 
 **svmloader** is a simplist but very fast python module (written in cython) to load 
 sparse data written at libsvm format.
 
-It is not functionnaly equivalent to :class:`sklearn.datasets.load_svmlight_file`, 
-and handle only the simplest cases.
+It is not fully equivalent to :class:`sklearn.datasets.load_svmlight_file`, 
+in particular `query_id` are not supported and `dtype` is restricted.
 
-The `labels` type supported are `int` and `float` (default `int`), and data can be parsed as `numpy.float64` or `numpy.float32` type (`float64` by default).  
-Multiple labels currently are not supported.
+However, the types of data and labels are distinguished.
+The `labels` types supported are `int` and `float` (default `int`), 
+and data can be parsed as `numpy.float64` or `numpy.float32` type (`float64` by default).
+
+Compressed data in .gz or .bz2 format is supported as well.
 
 
-.. toctree::
-   :maxdepth: 2
+API
+---
 
 .. automodule:: svmloader
 
-	.. autofunction:: load_svmfile(filename, dtype='d', ltype='l', nfeatures=None, zero_based=True)
-	.. autofunction:: load_svmfiles(filenames, dtype='d', ltype='l', zero_based=True)
+    .. autofunction:: load_svmfile(filename, dtype='d', ltype='i', nfeatures=None, zero_based=True, multilabels=False)
+    .. autofunction:: load_svmfiles(filenames, dtype='d', ltype='i', zero_based=True, multilabels=False)
 

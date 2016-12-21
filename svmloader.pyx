@@ -1,6 +1,6 @@
 cimport cython
-from libc.stdlib cimport strtoul, strtod
-from libc.stdint cimport uint32_t
+from libc.stdlib cimport strtol, strtoul, strtod
+from libc.limits cimport UINT_MAX
 import array
 from cpython cimport array
 import numpy as np
@@ -10,84 +10,114 @@ import scipy.sparse as sp
 @cython.boundscheck(False) # turn off bounds-checking for entire function
 @cython.wraparound(False)  # turn off negative index wrapping for entire function
 #@cython.initializedcheck(False)
-cdef _load_svmfile(fp, Py_UCS4 dtype, Py_UCS4 ltype, bint zero_based):
+cdef _load_svmfile(fp, dtype, ltype, bint zero_based, bint multilabels):
     cdef char * s
     cdef char * end
-    cdef uint32_t idx
+    cdef Py_ssize_t idx
+    cdef Py_ssize_t last_idx
     cdef double value
-    cdef bytes label
-    cdef bytes rest
 
+    cdef char dt = 'f' if dtype == 'f' else 'd'  # defaut is double
+    cdef char lt = 'd' if ltype == 'd' else 'i'  # default is int
     cdef array.array data = array.array(dtype)
-    cdef array.array indices = array.array('L')
-    cdef array.array indptr = array.array('L', [0])
-    cdef array.array labels = array.array(ltype)
+    cdef array.array indices = array.array('I')
+    cdef array.array indptr = array.array('I', [0])
+
+    if not multilabels:
+        labels = array.array(ltype)
+    else:
+        labels = []
+        cls = float if lt == 'd' else int
 
     cdef Py_ssize_t sz = 0
     cdef Py_ssize_t nrows = 0
 
     for line in fp:
-        if line[0] == '#':
+        s = line
+
+        if s[0] == '#':
             continue
 
-        # get the label
-        label, rest = line.split(None, 1)
         nrows += 1
 
-        array.resize_smart(labels, nrows)
-        if ltype == u'l':
-            labels.data.as_ints[nrows-1] = int(label)
+        # get the label
+        if not multilabels:
+            array.resize_smart(labels, nrows)
+            if lt == 'i':
+                labels[nrows-1] = strtol(s, &end, 10)
+            else:
+                labels[nrows-1] = strtod(s, &end)
+            if s==end:
+                raise ValueError('invalid label')
+            s = end
         else:
-            labels.data.as_doubles[nrows-1] = float(label)
-        s = rest
+            labl, line = line.split(None, 1)
+            s = line
+            label = sorted([cls(val) for val in labl.split(b',')])
+            labels.append(tuple(label))
 
+        # process the line
+        last_idx = -1
         while s[0] != '#' and s[0] != '\n' and s[0] != 0:
+            # check against negatives values because strtoul negate negatives values
+            if s[0] == '-':
+                raise ValueError('invalid index (negative)')
             # get index
             idx = strtoul(s, &end, 10)
-            if s==end:
+            if s == end:
                 raise ValueError('invalid index')
+            if idx > UINT_MAX:
+                raise ValueError('invalid index (overflow)')
             s = end
 
             if not zero_based:
-                if idx==0:
+                if idx == 0:
                     raise ValueError('invalid index 0 with one-based indexes')
                 idx -= 1
 
+            if idx <= last_idx:
+                raise ValueError('indices should be sorted and uniques')
+            last_idx = idx
+
             # ensure we have correct separator
-            while s[0]==' ':
+            while s[0] == ' ':
                 s += 1
             if s[0] != ':':
                 raise ValueError('invalid separator')
             s += 1
+
             # get value
             value = strtod(s, &end)
-            if s==end:
+            if s == end:
                 raise ValueError('invalid value')
             s = end
-            while s[0]==' ':
+            while s[0] == ' ':
                 s += 1
 
-            array.resize_smart(indices, sz+1)
-            array.resize_smart(data, sz+1)
-            indices.data.as_uints[sz] = idx
-            if dtype == u'd':
-                data.data.as_doubles[sz] = value
-            else:
-                data.data.as_floats[sz] = value
             sz += 1
+            array.resize_smart(indices, sz)
+            array.resize_smart(data, sz)
+            indices.data.as_uints[sz-1] = idx
+            if dt == 'd':
+                data.data.as_doubles[sz-1] = value
+            else:
+                data.data.as_floats[sz-1] = value
 
         array.resize_smart(indptr, nrows+1)
         indptr.data.as_uints[nrows] = sz
 
-    y = np.asarray(labels)
+    if not multilabels:
+        labels = np.frombuffer(labels, dtype=ltype)
 
-    return (data, indices, indptr, y)
+    return (np.frombuffer(data, dtype=dtype),
+            np.frombuffer(indices, dtype='I'),
+            np.frombuffer(indptr, dtype='I'),
+            labels)
 
 
-
-import os.path
 
 def _openfile(filename):
+    import os.path
     _, ext = os.path.splitext(filename)
     if ext == ".gz":
         import gzip
@@ -100,7 +130,7 @@ def _openfile(filename):
     return fp
 
 
-def load_svmfile(filename, Py_UCS4 dtype=u'd', Py_UCS4 ltype=u'l', nfeatures=None, zero_based=True):
+def load_svmfile(filename, dtype='d', ltype='i', nfeatures=None, zero_based=True, multilabels=False):
     """\
     Load a sparse matrix from filename at svmlib format.
 
@@ -110,20 +140,22 @@ def load_svmfile(filename, Py_UCS4 dtype=u'd', Py_UCS4 ltype=u'l', nfeatures=Non
     :type filename: str
     :param dtype: type of data, must be either 'd' (double) or 'f' (float)
     :type dtype: str
-    :param ltype: type of labels, must be either 'l' (int) or 'd' (double)
+    :param ltype: type of labels, must be either 'i' (int) or 'd' (double)
     :type ltype: str
     :param nfeatures: the number of columns (infered from file if is None)
     :type nfeatures: int
     :param zero_based: indicates if columns indexes are zero-based or one-based
     :type zero_based: bool
+    :param multilabels: indicates if file uses multiple labels per row
+    :type multilabels: bool
     :returns: (labels, sparse_matrix) tuple
     :rtype: (:class:`numpy.ndarray`, :class:`scipy.sparse.csr_matrix`)
     """
-    assert(dtype==u'f' or dtype==u'd'), 'dtype must be "d" or "f"'
-    assert(ltype==u'l' or ltype==u'd'), 'ltype must be "l" or "d"'
+    assert(dtype=='f' or dtype=='d'), 'dtype must be "d" or "f"'
+    assert(ltype=='i' or ltype=='d'), 'ltype must be "i" or "d"'
 
     fp = _openfile(filename)
-    data, indices, indptr, y = _load_svmfile(fp, dtype, ltype, zero_based)
+    data, indices, indptr, y = _load_svmfile(fp, dtype, ltype, zero_based, multilabels)
     fp.close()
 
     if nfeatures is None:
@@ -133,7 +165,7 @@ def load_svmfile(filename, Py_UCS4 dtype=u'd', Py_UCS4 ltype=u'l', nfeatures=Non
 
     return X, y
 
-def load_svmfiles(filenames, Py_UCS4 dtype=u'd', Py_UCS4 ltype=u'l', zero_based=True):
+def load_svmfiles(filenames, dtype='d', ltype='i', zero_based=True, multilabels=False):
     """\
     Load a sparse matrix list from list of filenames at svmlib format.
 
@@ -146,20 +178,22 @@ def load_svmfiles(filenames, Py_UCS4 dtype=u'd', Py_UCS4 ltype=u'l', zero_based=
     :type filenames: list
     :param dtype: type of data, must be either 'd' (double) or 'f' (float)
     :type dtype: str
-    :param ltype: type of labels, must be either 'l' (int) or 'd' (double)
+    :param ltype: type of labels, must be either 'i' (int) or 'd' (double)
     :type ltype: str
     :param zero_based: indicates if columns indexes are zero-based or one-based
     :type zero_based: bool
+    :param multilabels: indicates if file uses multiple labels per row
+    :type multilabels: bool
     :returns: a list [labels_0, matrix_0, .., labels_n, matrix_n]
     """
-    assert(dtype==u'f' or dtype==u'd'), 'dtype must be "d" or "f"'
-    assert(ltype==u'l' or ltype==u'd'), 'ltype must be "l" or "d"'
+    assert(dtype=='f' or dtype=='d'), 'dtype must be "d" or "f"'
+    assert(ltype=='i' or ltype=='d'), 'ltype must be "i" or "d"'
 
     Xlst = []
     ylst = []
     for filename in filenames:
         fp = _openfile(filename)
-        data, indices, indptr, y = _load_svmfile(fp, dtype, ltype, zero_based)
+        data, indices, indptr, y = _load_svmfile(fp, dtype, ltype, zero_based, multilabels)
         Xlst.append((data, indices, indptr))
         ylst.append(y)
         fp.close()
