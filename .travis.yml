@@ -17,22 +17,21 @@ cache:
 addons:
   apt:
     packages:
-      - python-numpy
-      - python-scipy
-      - python3-numpy
-      - python3-scipy
-#      - libatlas-dev
-#      - libatlas-base-dev
-#      - liblapack-dev
-#      - gfortran
+      - libatlas-dev
+      - libatlas-base-dev
+      - liblapack-dev
+      - gfortran
 
-virtualenv:
-  system_site_packages: true
+#virtualenv:
+#  system_site_packages: true
 
 before_install:
-#  - pip install numpy
-#  - travis_wait pip install scipy
-  - pip install Cython
+  - pip wheel numpy
+  - travis_wait pip wheel scipy
+  - pip wheel Cython
+  - pip install --use-wheel numpy
+  - pip install --use-wheel scipy
+  - pip install --use-wheel Cython
 
 install:
   - python setup.py install
