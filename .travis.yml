@@ -23,24 +23,23 @@ cache:
 #      - gfortran
 
 before_install:
-#  - pip wheel numpy
-#  - travis_wait pip wheel scipy
-#  - pip wheel Cython
   - pip install --use-wheel numpy
   - pip install --use-wheel scipy
   - pip install --use-wheel Cython
+  - pip install --upgrade setuptools
+  - pip install --upgrade wheel
 
 install:
   - python setup.py install
 
-#script:
-#  - cd tests && python test.py
+script:
+  - python tests/test.py
 
 deploy:
     provider: pypi
     user: yoch
     password:
-        secure: "tQBe27ZFFKOk26mev0tSFnAGmcWZ4aEVMSjkTbh8n+qfFSsPk8DgoPjSLs7+L7u2vnNA3m3Gd0lXBdYakmIPNGJRWmxLDunXHAHhUNaSqYx5ZW9ohBC8krwAjcux2FoChdbgXNKbEWEdZBTUdOqY6myh03iZ/Z71yEfo2OCJHnLC+skUBtEtBCVkyZFFqUDqI2L4YkQfnMT5gt2FTIFcUCYQj3HxEQdJpz8DlOy2V/1vDBORa21ec7szzQOceIedMYA3sc68EnB+mJnKCQ9IninaYwNPRAxyicw54WvnG1b7JEQG4ElpahMKj6oSpBSotXguCV5LPryLNpM0OH+2nJVKYHtHDaJX7EWPLn4I2ugPA7djBUxJTK/zQ/CCBRMkD3pWwOjaD69M8MB+XV2A+X7wT97N2ayoRjTBN7k2DrshMVM89ICTzjOTh18T590sa3xLlfKkozBIKRIi7TBZMybhrwhyti9tch/shL6pPqbfRJJ3Zydz2iJKS8HiKWbXpBqgon18WBaWgiL9MfoLahmCV6l3pBp7G9JJxID0P/cQhSaYbxx4zs6/v7Hf0Msq8UF0qc1HfB7loYhIZ2bLz60qRcS5K8VyitM1pBHAoblJpfhF48MfSYzRcfUTSyi1+3bdKX84WpFjHgnELL0r4jw+kPcJr8La7BzyDeY5xt8="
+        secure: "dU2V+HO4BElB3/b15tv1UT/BUoTBVFbr7/zu8GmJMu7emDwAFG8s4tFBaSe0Y2uDmU+CD9LNZk8bdXxuMEpHLmei7mH9BOEby/uMmnD6LbPG4YSjj5BU/WfhqIoOhrZ2bf8V3dLPwY9C+N/mTkrgI7WnDMM6nSWG7anXsQ6J1ifQZ5sbDNhYgHQEek6u+cy1ASBLfM6fsg5BWKla8+QNZUuw5tji6Cd+qD+CnZ/7RvtJNCpQEvRdXp3sBl7+fl7qgouyzPsyAl9EoGdpOL9SmDrgTLW45AMhKtS9yKaA+JEAETjdtrQd4i57j1BaZ4dv0Iony7ZOWkPrmzsuKc6AVz4+csNhNYRwSFf9+n4qbfVPJA8FFeRPEEgOkUuMOX3F/1+V6RHwaEibCdn2PjVXky7Lrs/VIittfhYY+14fDfN21xrRQlH1h7YzyR1Ae7fYm06wd6a2u6AGohTtWpCgN8BXJC3A15GO1kmPWuabNVGIfZ+4xSF5qdmYV337Am87gxsCdb9kFt90jy/VxMHMZZ1fwLSvEB+Nll6TiGcCCx8XE7Lf6a7Qvd0qdUB4XjTOOhN6CalMQ1EIrNHF6edvLjFyCG/1dj1lv6CFz85Urxx7GKcVQQJIXcaefiuQXwm8Eo7bKdpaGrMNH+5fZtgvN2761vPGCnN91O/4hI6GSKE="
     server: https://testpypi.python.org/pypi
     distributions: bdist_wheel
     on:
