@@ -1,6 +1,6 @@
 cimport cython
-from libc.stdlib cimport strtol, strtoul, strtod
-from libc.limits cimport UINT_MAX
+from libc.stdlib cimport strtol, strtod
+from libc.limits cimport INT_MAX
 import array
 from cpython cimport array
 import numpy as np
@@ -20,8 +20,8 @@ cdef _load_svmfile(fp, dtype, ltype, bint zero_based, bint multilabels):
     cdef char dt = 'f' if dtype == 'f' else 'd'  # defaut is double
     cdef char lt = 'd' if ltype == 'd' else 'i'  # default is int
     cdef array.array data = array.array(dtype)
-    cdef array.array indices = array.array('I')
-    cdef array.array indptr = array.array('I', [0])
+    cdef array.array indices = array.array('i')
+    cdef array.array indptr = array.array('i', [0])
 
     if not multilabels:
         labels = array.array(ltype)
@@ -59,15 +59,12 @@ cdef _load_svmfile(fp, dtype, ltype, bint zero_based, bint multilabels):
         # process the line
         last_idx = -1
         while s[0] != '#' and s[0] != '\n' and s[0] != 0:
-            # check against negatives values because strtoul negate negatives values
-            if s[0] == '-':
-                raise ValueError('invalid index (negative)')
             # get index
-            idx = strtoul(s, &end, 10)
+            idx = strtol(s, &end, 10)
             if s == end:
                 raise ValueError('invalid index')
-            if idx > UINT_MAX:
-                raise ValueError('invalid index (overflow)')
+            if idx < 0 or idx > INT_MAX:
+                raise ValueError('invalid index (out of range)')
             s = end
 
             if not zero_based:
@@ -97,21 +94,21 @@ cdef _load_svmfile(fp, dtype, ltype, bint zero_based, bint multilabels):
             sz += 1
             array.resize_smart(indices, sz)
             array.resize_smart(data, sz)
-            indices.data.as_uints[sz-1] = idx
+            indices.data.as_ints[sz-1] = idx
             if dt == 'd':
                 data.data.as_doubles[sz-1] = value
             else:
                 data.data.as_floats[sz-1] = value
 
         array.resize_smart(indptr, nrows+1)
-        indptr.data.as_uints[nrows] = sz
+        indptr.data.as_ints[nrows] = sz
 
     if not multilabels:
         labels = np.frombuffer(labels, dtype=ltype)
 
     return (np.frombuffer(data, dtype=dtype),
-            np.frombuffer(indices, dtype='I'),
-            np.frombuffer(indptr, dtype='I'),
+            np.frombuffer(indices, dtype='i'),
+            np.frombuffer(indptr, dtype='i'),
             labels)
 
 
@@ -159,9 +156,9 @@ def load_svmfile(filename, dtype='d', ltype='i', nfeatures=None, zero_based=True
     fp.close()
 
     if nfeatures is None:
-        X = sp.csr_matrix((data, indices, indptr))
+        X = sp.csr_matrix((data, indices, indptr), copy=False)
     else:
-        X = sp.csr_matrix((data, indices, indptr), (len(indptr)-1, nfeatures))
+        X = sp.csr_matrix((data, indices, indptr), shape=(len(indptr)-1, nfeatures), copy=False)
 
     return X, y
 
@@ -201,7 +198,7 @@ def load_svmfiles(filenames, dtype='d', ltype='i', zero_based=True, multilabels=
     nfeatures = max(max(indices) for _, indices, _ in Xlst) + 1
     lst = []
     for (data, indices, indptr), y in zip(Xlst, ylst):
-        X = sp.csr_matrix((data, indices, indptr), (len(indptr)-1, nfeatures))
+        X = sp.csr_matrix((data, indices, indptr), shape=(len(indptr)-1, nfeatures), copy=False)
         lst.append(X)
         lst.append(y)
     return lst
