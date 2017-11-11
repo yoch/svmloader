@@ -129,7 +129,7 @@ def _openfile(filename):
 
 def load_svmfile(filename, dtype='d', ltype='i', nfeatures=None, zero_based=True, multilabels=False):
     """\
-    Load a sparse matrix from filename at svmlib format.
+    Load a sparse CSR matrix from filename at svmlib format.
 
     Files in .gz or .bz2 format will be uncompressed on the fly.
 
@@ -164,7 +164,7 @@ def load_svmfile(filename, dtype='d', ltype='i', nfeatures=None, zero_based=True
 
 def load_svmfiles(filenames, dtype='d', ltype='i', zero_based=True, multilabels=False):
     """\
-    Load a sparse matrix list from list of filenames at svmlib format.
+    Load a sparse CSR matrix list from list of filenames at svmlib format.
 
     Files in .gz or .bz2 format will be uncompressed on the fly.
 
@@ -189,16 +189,46 @@ def load_svmfiles(filenames, dtype='d', ltype='i', zero_based=True, multilabels=
     Xlst = []
     ylst = []
     for filename in filenames:
-        fp = _openfile(filename)
-        data, indices, indptr, y = _load_svmfile(fp, dtype, ltype, zero_based, multilabels)
-        Xlst.append((data, indices, indptr))
-        ylst.append(y)
-        fp.close()
+        with _openfile(filename) as fp:
+            try:
+                data, indices, indptr, y = _load_svmfile(fp, dtype, ltype, zero_based, multilabels)
+            except ValueError as err:
+                err.args = 'in %s, %s' % (filename, err.args[0]),
+                raise
+            Xlst.append((data, indices, indptr))
+            ylst.append(y)
     # get nfeatures as the maximum indice
     nfeatures = max(max(indices) for _, indices, _ in Xlst) + 1
     lst = []
     for (data, indices, indptr), y in zip(Xlst, ylst):
-        X = sp.csr_matrix((data, indices, indptr), shape=(len(indptr)-1, nfeatures), copy=False)
+        X = sp.csr_matrix((data, indices, indptr), shape=(len(indptr)-1, nfeatures), copy=False)    
         lst.append(X)
         lst.append(y)
     return lst
+
+def save_svmfile(filename, mat, labels=None, zero_based=False):
+    """\
+    Save a sparse CSR matrix to filename at svmlib format (convenient function).
+
+    :param filename: the output filesname
+    :type filename: str
+    :param mat: the sparse matrix
+    :type dtype: `scipy.sparse.csr_matrix`
+    :param labels: the rows labels
+    :type ltype: indexable
+    :param zero_based: indicates if columns indexes are zero-based or one-based
+    :type zero_based: bool
+    """
+    data, indices, indptr = mat.data, mat.indices, mat.indptr
+    if not zero_based:
+        indices += 1
+    with open(filename, 'w') as fp:
+        for i in range(len(indptr)-1):
+            start = indptr[i]
+            stop = indptr[i+1]
+            line = ' '.join('%d:%g' % (indices[j], data[j])
+                            for j in range(start, stop))
+            if labels is not None:
+                fp.write('%s ' % labels[i])
+            fp.write(line)
+            fp.write('\n')
