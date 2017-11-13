@@ -30,4 +30,4 @@ API
 
     .. autofunction:: load_svmfile(filename, dtype='d', ltype='i', nfeatures=None, zero_based=True, multilabels=False)
     .. autofunction:: load_svmfiles(filenames, dtype='d', ltype='i', zero_based=True, multilabels=False)
-
+    .. autofunction:: save_svmfile(filename, mat, labels=None, zero_based=False)

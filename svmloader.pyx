@@ -4,6 +4,7 @@ from libc.limits cimport INT_MAX
 import array
 from cpython cimport array
 import numpy as np
+cimport numpy as cnp
 import scipy.sparse as sp
 
 
@@ -206,29 +207,34 @@ def load_svmfiles(filenames, dtype='d', ltype='i', zero_based=True, multilabels=
         lst.append(y)
     return lst
 
+@cython.boundscheck(False) # turn off bounds-checking for entire function
+@cython.wraparound(False)  # turn off negative index wrapping for entire function
 def save_svmfile(filename, mat, labels=None, zero_based=False):
     """\
     Save a sparse CSR matrix to filename at svmlib format (convenient function).
 
     :param filename: the output filesname
     :type filename: str
-    :param mat: the sparse matrix
-    :type dtype: `scipy.sparse.csr_matrix`
+    :param mat: the sparse csr matrix
+    :type dtype: :class:`scipy.sparse.csr_matrix`
     :param labels: the rows labels
     :type ltype: indexable
     :param zero_based: indicates if columns indexes are zero-based or one-based
     :type zero_based: bool
     """
-    data, indices, indptr = mat.data, mat.indices, mat.indptr
-    if not zero_based:
-        indices += 1
+    assert isinstance(mat, sp.csr_matrix), 'not a CSR matrix'
+    cdef cnp.int_t[:] indices = mat.indices
+    cdef cnp.int_t[:] indptr = mat.indptr
+    cdef cnp.ndarray data = mat.data
+    cdef Py_ssize_t i
+    cdef Py_ssize_t j
+    cdef Py_ssize_t offset
+    offset = 0 if zero_based else 1
     with open(filename, 'w') as fp:
-        for i in range(len(indptr)-1):
-            start = indptr[i]
-            stop = indptr[i+1]
-            line = ' '.join('%d:%g' % (indices[j], data[j])
-                            for j in range(start, stop))
+        for i in range(indptr.shape[0] - 1):
             if labels is not None:
                 fp.write('%s ' % labels[i])
-            fp.write(line)
+            row = ' '.join(['%d:%g' % (indices[j] + offset, data[j])
+                            for j in range(indptr[i], indptr[i+1])])
+            fp.write(row)
             fp.write('\n')
