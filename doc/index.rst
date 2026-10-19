@@ -3,15 +3,22 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to svmloader's documentation!
-=====================================
+.. meta::
+   :description: svmloader: fast loader for libsvm / svmlight sparse data files in Python (Cython), returning SciPy CSR matrices; an alternative to sklearn.datasets.load_svmlight_file.
+   :keywords: libsvm, svmlight, load_svmlight_file, sparse matrix, csr, scipy, cython, python
+
+svmloader documentation
+=======================
 
 .. toctree::
    :maxdepth: 2
 
 
-**svmloader** is a very fast python module (written in cython) 
-intended to load sparse data written at libsvm format.
+**svmloader** is a fast loader for libsvm / svmlight sparse data files in Python (Cython),
+an alternative to ``sklearn.datasets.load_svmlight_file``.
+
+* Install: ``pip install svmloader`` (`PyPI <https://pypi.org/project/svmloader/>`_)
+* Source code and issue tracker: `GitHub <https://github.com/yoch/svmloader>`_
 
 It is not fully equivalent to `sklearn.datasets.load_svmlight_file`, 
 in particular `query_id` are not supported and `dtype` is restricted.
