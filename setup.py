@@ -29,10 +29,17 @@ if USE_CYTHON:
     except ImportError:
         raise SystemExit(
             'building svmloader from svmloader.pyx requires Cython; '
-            'install it or use --no-cython to build from the generated C file'
+            'install Cython, or build from a release sdist that ships the '
+            'generated svmloader.c using --no-cython'
         )
     cmdclass = {'build_ext': build_ext}
 else:
+    if not os.path.exists(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'svmloader.c')):
+        raise SystemExit(
+            '--no-cython requires the generated svmloader.c, which is not '
+            'tracked in git. Generate it with "cython svmloader.pyx", or use '
+            'a release sdist (built with "setup.py --no-cython sdist").'
+        )
     cmdclass = {}
 
 import numpy as np
@@ -40,7 +47,7 @@ import numpy as np
 
 setup(
     name = 'svmloader',
-    version = '0.5',
+    version = '0.5.1',
     description = DESCRIPTION,
     long_description = LONG_DESCRIPTION,
     long_description_content_type = 'text/markdown',
@@ -58,6 +65,7 @@ setup(
     ],
     package_data = {'': ['*.pyx']},
     license = 'GPL3',
+    python_requires = '>=3.9',
     cmdclass = cmdclass,
     classifiers = [
         'Development Status :: 4 - Beta',
@@ -66,6 +74,7 @@ setup(
         'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
         'Operating System :: OS Independent',
         'Programming Language :: Cython',
+        'Programming Language :: Python :: 3',
         'Topic :: Scientific/Engineering'
     ],
     keywords='libsvm,sparse matrix,csr,svmlight,load_svmlight_file,sparse,scipy,cython',
