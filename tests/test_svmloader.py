@@ -72,3 +72,85 @@ def test_save_load_roundtrip(tmp_path, index_dtype):
 def test_docstrings_document_matrix_first():
     assert "(X, y)" in svmloader.load_svmfile.__doc__
     assert "[matrix_0, labels_0" in svmloader.load_svmfiles.__doc__
+
+
+@pytest.mark.parametrize("index_dtype", [np.int32, np.int64])
+def test_save_svmfile_accepts_read_only_indices(tmp_path, index_dtype):
+    X = sp.csr_matrix(np.array([[0.0, 1.5], [2.0, 0.0]]))
+    X.indices = X.indices.astype(index_dtype)
+    X.indptr = X.indptr.astype(index_dtype)
+    X.indices.flags.writeable = False
+    X.indptr.flags.writeable = False
+    path = tmp_path / "read_only.svm"
+
+    svmloader.save_svmfile(str(path), X, np.array([1, 0]))
+
+    assert path.read_text() == "1 2:1.5\n0 1:2\n"
+
+
+def test_save_svmfile_rejects_mismatched_index_dtypes(tmp_path):
+    X = sp.csr_matrix(np.array([[0.0, 1.5], [2.0, 0.0]]))
+    X.indptr = X.indptr.astype(np.int64)  # indices stay int32
+    assert X.indices.dtype == np.int32
+
+    with pytest.raises(TypeError, match="same dtype"):
+        svmloader.save_svmfile(str(tmp_path / "out.svm"), X)
+
+
+def test_save_svmfile_rejects_unsupported_index_dtype(tmp_path):
+    X = sp.csr_matrix(np.array([[0.0, 1.5], [2.0, 0.0]]))
+    X.indices = X.indices.astype(np.int16)
+    X.indptr = X.indptr.astype(np.int16)
+
+    with pytest.raises(TypeError, match="unsupported index dtype"):
+        svmloader.save_svmfile(str(tmp_path / "out.svm"), X)
+
+
+def test_save_svmfile_accepts_csr_array(tmp_path):
+    if not hasattr(sp, "csr_array"):
+        pytest.skip("scipy too old for csr_array")
+    X = sp.csr_array(np.array([[0.0, 1.5], [2.0, 0.0]]))
+    path = tmp_path / "array.svm"
+
+    svmloader.save_svmfile(str(path), X, np.array([1, 0]))
+
+    assert path.read_text() == "1 2:1.5\n0 1:2\n"
+
+
+def test_save_svmfile_without_labels_zero_based(tmp_path):
+    X = sp.csr_matrix(np.array([[0.0, 1.5], [2.0, 0.0]]))
+    path = tmp_path / "out.svm"
+
+    svmloader.save_svmfile(str(path), X, zero_based=True)
+
+    assert path.read_text() == "1:1.5\n0:2\n"
+
+
+def test_save_svmfile_single_precision_data(tmp_path):
+    X = sp.csr_matrix(np.array([[0.0, 1.5], [2.0, 0.0]], dtype=np.float32))
+    path = tmp_path / "float32.svm"
+
+    svmloader.save_svmfile(str(path), X)
+
+    assert path.read_text() == "2:1.5\n1:2\n"
+
+
+@pytest.mark.parametrize("suffix", [".gz", ".bz2"])
+def test_load_compressed_file(tmp_path, suffix):
+    plain = tmp_path / "plain.svm"
+    plain.write_text(DATA)
+    compressed = tmp_path / ("data.svm" + suffix)
+    if suffix == ".gz":
+        import gzip
+        with gzip.open(compressed, "wb") as fp:
+            fp.write(DATA.encode())
+    else:
+        import bz2
+        with bz2.open(compressed, "wb") as fp:
+            fp.write(DATA.encode())
+
+    X_plain, y_plain = svmloader.load_svmfile(str(plain), zero_based=False)
+    X_comp, y_comp = svmloader.load_svmfile(str(compressed), zero_based=False)
+
+    np.testing.assert_array_equal(y_comp, y_plain)
+    np.testing.assert_allclose(X_comp.toarray(), X_plain.toarray())

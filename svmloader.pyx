@@ -14,6 +14,9 @@ ctypedef fused csr_index_t:
     cnp.int32_t
     cnp.int64_t
 
+_CSR_CLASSES = (sp.csr_matrix,
+                sp.csr_array) if hasattr(sp, 'csr_array') else (sp.csr_matrix,)
+
 
 @cython.boundscheck(False) # turn off bounds-checking for entire function
 @cython.wraparound(False)  # turn off negative index wrapping for entire function
@@ -239,17 +242,20 @@ def save_svmfile(filename, mat, labels=None, zero_based=False):
     :param filename: the output filesname
     :type filename: str
     :param mat: the sparse csr matrix
-    :type mat: :class:`scipy.sparse.csr_matrix`
+    :type mat: :class:`scipy.sparse.csr_matrix` or :class:`scipy.sparse.csr_array`
     :param labels: the rows labels
     :type labels: indexable
     :param zero_based: indicates if columns indexes are zero-based or one-based
     :type zero_based: bool
     """
-    assert isinstance(mat, sp.csr_matrix), 'not a CSR matrix'
-    cdef cnp.int32_t[:] indices32
-    cdef cnp.int32_t[:] indptr32
-    cdef cnp.int64_t[:] indices64
-    cdef cnp.int64_t[:] indptr64
+    assert isinstance(mat, _CSR_CLASSES), 'not a CSR matrix'
+    if mat.indices.dtype != mat.indptr.dtype:
+        raise TypeError('mat.indices and mat.indptr must have the same dtype, '
+                        'got %s and %s' % (mat.indices.dtype, mat.indptr.dtype))
+    cdef const cnp.int32_t[:] indices32
+    cdef const cnp.int32_t[:] indptr32
+    cdef const cnp.int64_t[:] indices64
+    cdef const cnp.int64_t[:] indptr64
     if mat.indices.dtype == np.int32:
         indices32 = mat.indices
         indptr32 = mat.indptr
@@ -262,4 +268,3 @@ def save_svmfile(filename, mat, labels=None, zero_based=False):
                       indices64, indptr64)
     else:
         raise TypeError('unsupported index dtype: %s' % mat.indices.dtype)
-
