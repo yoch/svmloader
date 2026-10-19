@@ -15,14 +15,15 @@ The types of data and labels are distinguished.
 The labels types supported are `int` and `float` (default `int`), 
 and data can be parsed as `numpy.float64` or `numpy.float32` type (`float64` by default).
 
-Compressed data in .gz or .bz2 format is supported as well.
+Compressed data in .gz or .bz2 format is supported as well
+(see [Benchmarks](#benchmarks) for the cost of bz2 decompression).
 
 Install
 -------
 
-Simply use `pip install svmloader`.
+Simply use `pip install svmloader` (Python 3.9+).
 
-Alternatively, you can clone the repository and run `python setup.py install`.
+Alternatively, you can clone the repository and run `pip install .`.
 
 
 Dependencies :
@@ -58,10 +59,22 @@ See [here](https://svmloader.readthedocs.io/en/latest/).
 Benchmarks
 ----------
 
-Benchmarks on data taken from [libsvm datasets](https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/).
+Benchmarks on data taken from [libsvm datasets](https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/),
+with Python 3.12, numpy 2.5, scipy 1.18 and scikit-learn 1.9.1 on an Intel
+Core i7-3770. Times are the best of 3 runs (2 for rcv1) in a fresh process,
+with the files in the page cache.
 
+| dataset *(shape, nonzeros)*                       | sklearn 1.9 | svmloader |
+| :---                                              |        ---: |      ---: |
+| **mnist.scale** (60000x780, 8994156)              | 5.0s        | 0.88s     |
+| **rcv1_test.multiclass** (518571x47236, 33486015) | 21.1s       | 7.6s      |
 
-| dataset *(shape, nonzeros)*                       | sklearn  | svmloader |
-| :---                                              |     ---: |    ---: |
-| **mnist.scale** (60000x780, 8994156)              | 78.1s    |  1.5s   |
-| **rcv1_test.multiclass** (518571x47236, 33486015) | 1004.3s  |  7.9s   |
+`svmloader` is 5-6x faster than scikit-learn on mnist and about 3x faster on
+rcv1. For reference, libsvm's `svm_read_problem` takes 5.0s on mnist.
+
+Compressed files are decompressed on the fly. bzip2 decompression is
+CPU-bound and much slower than parsing: on the same machine, loading
+`mnist.bz2` takes 3-8s (versus 0.9s uncompressed) and the 815 MB rcv1 file
+takes 60-100s from `.bz2` (versus 7.6s uncompressed). The range reflects
+CPU throttling under sustained decompression; `.gz` files decompress much
+faster.

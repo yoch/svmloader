@@ -8,6 +8,16 @@ cimport numpy as cnp
 import scipy.sparse as sp
 
 
+# SciPy uses int32 indices by default and switches to int64 for large
+# matrices, so save_svmfile must accept both.
+ctypedef fused csr_index_t:
+    cnp.int32_t
+    cnp.int64_t
+
+_CSR_CLASSES = (sp.csr_matrix,
+                sp.csr_array) if hasattr(sp, 'csr_array') else (sp.csr_matrix,)
+
+
 @cython.boundscheck(False) # turn off bounds-checking for entire function
 @cython.wraparound(False)  # turn off negative index wrapping for entire function
 #@cython.initializedcheck(False)
@@ -146,8 +156,8 @@ def load_svmfile(filename, dtype='d', ltype='i', nfeatures=None, zero_based=True
     :type zero_based: bool
     :param multilabels: indicates if file uses multiple labels per row
     :type multilabels: bool
-    :returns: (labels, sparse_matrix) tuple
-    :rtype: (:class:`numpy.ndarray`, :class:`scipy.sparse.csr_matrix`)
+    :returns: (X, y) tuple, where X is the sparse matrix and y its labels
+    :rtype: (:class:`scipy.sparse.csr_matrix`, :class:`numpy.ndarray`)
     """
     assert(dtype=='f' or dtype=='d'), 'dtype must be "d" or "f"'
     assert(ltype=='i' or ltype=='d'), 'ltype must be "i" or "d"'
@@ -182,7 +192,7 @@ def load_svmfiles(filenames, dtype='d', ltype='i', zero_based=True, multilabels=
     :type zero_based: bool
     :param multilabels: indicates if file uses multiple labels per row
     :type multilabels: bool
-    :returns: a list [labels_0, matrix_0, .., labels_n, matrix_n]
+    :returns: a list [matrix_0, labels_0, .., matrix_n, labels_n]
     """
     assert(dtype=='f' or dtype=='d'), 'dtype must be "d" or "f"'
     assert(ltype=='i' or ltype=='d'), 'ltype must be "i" or "d"'
@@ -209,27 +219,12 @@ def load_svmfiles(filenames, dtype='d', ltype='i', zero_based=True, multilabels=
 
 @cython.boundscheck(False) # turn off bounds-checking for entire function
 @cython.wraparound(False)  # turn off negative index wrapping for entire function
-def save_svmfile(filename, mat, labels=None, zero_based=False):
-    """\
-    Save a sparse CSR matrix to filename at svmlib format (convenient function).
-
-    :param filename: the output filesname
-    :type filename: str
-    :param mat: the sparse csr matrix
-    :type dtype: :class:`scipy.sparse.csr_matrix`
-    :param labels: the rows labels
-    :type ltype: indexable
-    :param zero_based: indicates if columns indexes are zero-based or one-based
-    :type zero_based: bool
-    """
-    assert isinstance(mat, sp.csr_matrix), 'not a CSR matrix'
-    cdef cnp.int_t[:] indices = mat.indices
-    cdef cnp.int_t[:] indptr = mat.indptr
+cdef _save_svmfile(filename, mat, labels, bint zero_based,
+                   const csr_index_t[:] indices, const csr_index_t[:] indptr):
     cdef cnp.ndarray data = mat.data
     cdef Py_ssize_t i
     cdef Py_ssize_t j
-    cdef Py_ssize_t offset
-    offset = 0 if zero_based else 1
+    cdef Py_ssize_t offset = 0 if zero_based else 1
     with open(filename, 'w') as fp:
         for i in range(indptr.shape[0] - 1):
             if labels is not None:
@@ -238,3 +233,38 @@ def save_svmfile(filename, mat, labels=None, zero_based=False):
                             for j in range(indptr[i], indptr[i+1])])
             fp.write(row)
             fp.write('\n')
+
+
+def save_svmfile(filename, mat, labels=None, zero_based=False):
+    """\
+    Save a sparse CSR matrix to filename at svmlib format (convenient function).
+
+    :param filename: the output filesname
+    :type filename: str
+    :param mat: the sparse csr matrix
+    :type mat: :class:`scipy.sparse.csr_matrix` or :class:`scipy.sparse.csr_array`
+    :param labels: the rows labels
+    :type labels: indexable
+    :param zero_based: indicates if columns indexes are zero-based or one-based
+    :type zero_based: bool
+    """
+    assert isinstance(mat, _CSR_CLASSES), 'not a CSR matrix'
+    if mat.indices.dtype != mat.indptr.dtype:
+        raise TypeError('mat.indices and mat.indptr must have the same dtype, '
+                        'got %s and %s' % (mat.indices.dtype, mat.indptr.dtype))
+    cdef const cnp.int32_t[:] indices32
+    cdef const cnp.int32_t[:] indptr32
+    cdef const cnp.int64_t[:] indices64
+    cdef const cnp.int64_t[:] indptr64
+    if mat.indices.dtype == np.int32:
+        indices32 = mat.indices
+        indptr32 = mat.indptr
+        _save_svmfile(filename, mat, labels, <bint>zero_based,
+                      indices32, indptr32)
+    elif mat.indices.dtype == np.int64:
+        indices64 = mat.indices
+        indptr64 = mat.indptr
+        _save_svmfile(filename, mat, labels, <bint>zero_based,
+                      indices64, indptr64)
+    else:
+        raise TypeError('unsupported index dtype: %s' % mat.indices.dtype)

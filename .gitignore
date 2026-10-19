@@ -1,5 +1,7 @@
 /*.cpp
 /*.c
+/*.so
+__pycache__/
 /build
 /dist
 /doc/_build
