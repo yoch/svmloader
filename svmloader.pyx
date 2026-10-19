@@ -8,6 +8,13 @@ cimport numpy as cnp
 import scipy.sparse as sp
 
 
+# SciPy uses int32 indices by default and switches to int64 for large
+# matrices, so save_svmfile must accept both.
+ctypedef fused csr_index_t:
+    cnp.int32_t
+    cnp.int64_t
+
+
 @cython.boundscheck(False) # turn off bounds-checking for entire function
 @cython.wraparound(False)  # turn off negative index wrapping for entire function
 #@cython.initializedcheck(False)
@@ -209,6 +216,22 @@ def load_svmfiles(filenames, dtype='d', ltype='i', zero_based=True, multilabels=
 
 @cython.boundscheck(False) # turn off bounds-checking for entire function
 @cython.wraparound(False)  # turn off negative index wrapping for entire function
+cdef _save_svmfile(filename, mat, labels, bint zero_based,
+                   const csr_index_t[:] indices, const csr_index_t[:] indptr):
+    cdef cnp.ndarray data = mat.data
+    cdef Py_ssize_t i
+    cdef Py_ssize_t j
+    cdef Py_ssize_t offset = 0 if zero_based else 1
+    with open(filename, 'w') as fp:
+        for i in range(indptr.shape[0] - 1):
+            if labels is not None:
+                fp.write('%s ' % labels[i])
+            row = ' '.join(['%d:%g' % (indices[j] + offset, data[j])
+                            for j in range(indptr[i], indptr[i+1])])
+            fp.write(row)
+            fp.write('\n')
+
+
 def save_svmfile(filename, mat, labels=None, zero_based=False):
     """\
     Save a sparse CSR matrix to filename at svmlib format (convenient function).
@@ -223,18 +246,20 @@ def save_svmfile(filename, mat, labels=None, zero_based=False):
     :type zero_based: bool
     """
     assert isinstance(mat, sp.csr_matrix), 'not a CSR matrix'
-    cdef cnp.int_t[:] indices = mat.indices
-    cdef cnp.int_t[:] indptr = mat.indptr
-    cdef cnp.ndarray data = mat.data
-    cdef Py_ssize_t i
-    cdef Py_ssize_t j
-    cdef Py_ssize_t offset
-    offset = 0 if zero_based else 1
-    with open(filename, 'w') as fp:
-        for i in range(indptr.shape[0] - 1):
-            if labels is not None:
-                fp.write('%s ' % labels[i])
-            row = ' '.join(['%d:%g' % (indices[j] + offset, data[j])
-                            for j in range(indptr[i], indptr[i+1])])
-            fp.write(row)
-            fp.write('\n')
+    cdef cnp.int32_t[:] indices32
+    cdef cnp.int32_t[:] indptr32
+    cdef cnp.int64_t[:] indices64
+    cdef cnp.int64_t[:] indptr64
+    if mat.indices.dtype == np.int32:
+        indices32 = mat.indices
+        indptr32 = mat.indptr
+        _save_svmfile(filename, mat, labels, <bint>zero_based,
+                      indices32, indptr32)
+    elif mat.indices.dtype == np.int64:
+        indices64 = mat.indices
+        indptr64 = mat.indptr
+        _save_svmfile(filename, mat, labels, <bint>zero_based,
+                      indices64, indptr64)
+    else:
+        raise TypeError('unsupported index dtype: %s' % mat.indices.dtype)
+
