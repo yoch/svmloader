@@ -153,8 +153,8 @@ def load_svmfile(filename, dtype='d', ltype='i', nfeatures=None, zero_based=True
     :type zero_based: bool
     :param multilabels: indicates if file uses multiple labels per row
     :type multilabels: bool
-    :returns: (labels, sparse_matrix) tuple
-    :rtype: (:class:`numpy.ndarray`, :class:`scipy.sparse.csr_matrix`)
+    :returns: (X, y) tuple, where X is the sparse matrix and y its labels
+    :rtype: (:class:`scipy.sparse.csr_matrix`, :class:`numpy.ndarray`)
     """
     assert(dtype=='f' or dtype=='d'), 'dtype must be "d" or "f"'
     assert(ltype=='i' or ltype=='d'), 'ltype must be "i" or "d"'
@@ -189,7 +189,7 @@ def load_svmfiles(filenames, dtype='d', ltype='i', zero_based=True, multilabels=
     :type zero_based: bool
     :param multilabels: indicates if file uses multiple labels per row
     :type multilabels: bool
-    :returns: a list [labels_0, matrix_0, .., labels_n, matrix_n]
+    :returns: a list [matrix_0, labels_0, .., matrix_n, labels_n]
     """
     assert(dtype=='f' or dtype=='d'), 'dtype must be "d" or "f"'
     assert(ltype=='i' or ltype=='d'), 'ltype must be "i" or "d"'
@@ -239,9 +239,9 @@ def save_svmfile(filename, mat, labels=None, zero_based=False):
     :param filename: the output filesname
     :type filename: str
     :param mat: the sparse csr matrix
-    :type dtype: :class:`scipy.sparse.csr_matrix`
+    :type mat: :class:`scipy.sparse.csr_matrix`
     :param labels: the rows labels
-    :type ltype: indexable
+    :type labels: indexable
     :param zero_based: indicates if columns indexes are zero-based or one-based
     :type zero_based: bool
     """

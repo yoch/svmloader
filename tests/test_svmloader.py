@@ -67,3 +67,8 @@ def test_save_load_roundtrip(tmp_path, index_dtype):
 
     np.testing.assert_array_equal(y2, y)
     np.testing.assert_allclose(X2.toarray(), X.toarray())
+
+
+def test_docstrings_document_matrix_first():
+    assert "(X, y)" in svmloader.load_svmfile.__doc__
+    assert "[matrix_0, labels_0" in svmloader.load_svmfiles.__doc__
