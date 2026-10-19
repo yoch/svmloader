@@ -1,9 +1,7 @@
 from setuptools import setup, Extension
-from Cython.Build import build_ext # , cythonize
 import io
 import os
 import sys
-import numpy as np
 
 
 DESCRIPTION = 'a very fast parser for sparse matrix at libsvm format'
@@ -24,6 +22,20 @@ else:
     USE_CYTHON = True
 
 ext = '.pyx' if USE_CYTHON else '.c'
+
+if USE_CYTHON:
+    try:
+        from Cython.Build import build_ext
+    except ImportError:
+        raise SystemExit(
+            'building svmloader from svmloader.pyx requires Cython; '
+            'install it or use --no-cython to build from the generated C file'
+        )
+    cmdclass = {'build_ext': build_ext}
+else:
+    cmdclass = {}
+
+import numpy as np
 
 
 setup(
@@ -46,7 +58,7 @@ setup(
     ],
     package_data = {'': ['*.pyx']},
     license = 'GPL3',
-    cmdclass = {'build_ext': build_ext},
+    cmdclass = cmdclass,
     classifiers = [
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
