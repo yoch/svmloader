@@ -91,7 +91,7 @@ cdef _load_svmfile(fp, dtype, ltype, bint zero_based, bint multilabels):
             last_idx = idx
 
             # ensure we have correct separator
-            while s[0] == ' ':
+            while s[0] == ' ' or s[0] == '\t':
                 s += 1
             if s[0] != ':':
                 raise ValueError('invalid separator')
@@ -102,10 +102,13 @@ cdef _load_svmfile(fp, dtype, ltype, bint zero_based, bint multilabels):
             if s == end:
                 raise ValueError('invalid value')
             s = end
-            while s[0] == ' ':
+            while s[0] == ' ' or s[0] == '\t':
                 s += 1
 
             sz += 1
+            if sz > INT_MAX:
+                # indptr holds C ints, which would silently wrap around
+                raise ValueError('too many non-zero values (more than %d)' % INT_MAX)
             array.resize_smart(indices, sz)
             array.resize_smart(data, sz)
             indices.data.as_ints[sz-1] = idx
@@ -141,6 +144,11 @@ def _openfile(filename):
     return fp
 
 
+def _nfeatures(indices):
+    """Number of columns implied by the indices: 0 for a file without values."""
+    return int(indices.max()) + 1 if len(indices) else 0
+
+
 def load_svmfile(filename, dtype='d', ltype='i', nfeatures=None, zero_based=True, multilabels=False):
     """\
     Load a sparse CSR matrix from filename at svmlib format.
@@ -165,14 +173,12 @@ def load_svmfile(filename, dtype='d', ltype='i', nfeatures=None, zero_based=True
     assert(dtype=='f' or dtype=='d'), 'dtype must be "d" or "f"'
     assert(ltype=='i' or ltype=='d'), 'ltype must be "i" or "d"'
 
-    fp = _openfile(filename)
-    data, indices, indptr, y = _load_svmfile(fp, dtype, ltype, zero_based, multilabels)
-    fp.close()
+    with _openfile(filename) as fp:
+        data, indices, indptr, y = _load_svmfile(fp, dtype, ltype, zero_based, multilabels)
 
     if nfeatures is None:
-        X = sp.csr_matrix((data, indices, indptr), copy=False)
-    else:
-        X = sp.csr_matrix((data, indices, indptr), shape=(len(indptr)-1, nfeatures), copy=False)
+        nfeatures = _nfeatures(indices)
+    X = sp.csr_matrix((data, indices, indptr), shape=(len(indptr)-1, nfeatures), copy=False)
 
     return X, y
 
@@ -212,7 +218,7 @@ def load_svmfiles(filenames, dtype='d', ltype='i', zero_based=True, multilabels=
             Xlst.append((data, indices, indptr))
             ylst.append(y)
     # get nfeatures as the maximum indice
-    nfeatures = max(max(indices) for _, indices, _ in Xlst) + 1
+    nfeatures = max([_nfeatures(indices) for _, indices, _ in Xlst], default=0)
     lst = []
     for (data, indices, indptr), y in zip(Xlst, ylst):
         X = sp.csr_matrix((data, indices, indptr), shape=(len(indptr)-1, nfeatures), copy=False)    
