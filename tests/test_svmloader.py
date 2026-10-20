@@ -181,3 +181,48 @@ def test_save_svmfile_writes_lf_line_endings(tmp_path):
     svmloader.save_svmfile(str(path), X, np.array([1, 0]))
 
     assert path.read_bytes() == b"1 2:1.5\n0 1:2\n"
+
+
+def test_load_empty_file(tmp_path):
+    path = tmp_path / "empty.svm"
+    path.write_bytes(b"")
+
+    X, y = svmloader.load_svmfile(str(path))
+    assert X.shape == (0, 0)
+    assert len(y) == 0
+
+    X, y = svmloader.load_svmfiles([str(path)])
+    assert X.shape == (0, 0)
+    assert len(y) == 0
+
+
+def test_load_rows_without_values(tmp_path):
+    path = tmp_path / "labels_only.svm"
+    path.write_bytes(b"1\n0\n")
+
+    X, y = svmloader.load_svmfile(str(path))
+
+    assert X.shape == (2, 0)
+    assert y.tolist() == [1, 0]
+
+
+def test_load_svmfiles_with_an_empty_file(tmp_path):
+    a = tmp_path / "a.svm"
+    a.write_bytes(b"1 1:2 4:1\n")
+    b = tmp_path / "b.svm"
+    b.write_bytes(b"")
+
+    X0, y0, X1, y1 = svmloader.load_svmfiles([str(a), str(b)], zero_based=False)
+
+    assert X0.shape == (1, 4)
+    assert X1.shape == (0, 4)
+
+
+def test_load_tabs_as_whitespace(tmp_path):
+    path = tmp_path / "tabs.svm"
+    path.write_bytes(b"1\t1:0.5\t3 :\t2\t\n0 2:1 \t\n")
+
+    X, y = svmloader.load_svmfile(str(path), zero_based=False)
+
+    assert y.tolist() == [1, 0]
+    np.testing.assert_allclose(X.toarray(), [[0.5, 0.0, 2.0], [0.0, 1.0, 0.0]])
