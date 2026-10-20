@@ -47,7 +47,7 @@ import numpy as np
 
 setup(
     name = 'svmloader',
-    version = '0.5.1',
+    version = '0.5.2',
     description = DESCRIPTION,
     long_description = LONG_DESCRIPTION,
     long_description_content_type = 'text/markdown',
