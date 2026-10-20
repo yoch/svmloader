@@ -154,3 +154,22 @@ def test_load_compressed_file(tmp_path, suffix):
 
     np.testing.assert_array_equal(y_comp, y_plain)
     np.testing.assert_allclose(X_comp.toarray(), X_plain.toarray())
+
+
+def test_load_crlf_file(tmp_path):
+    path = tmp_path / "crlf.svm"
+    path.write_bytes(DATA.replace("\n", "\r\n").encode())
+
+    X, y = svmloader.load_svmfile(str(path), zero_based=False)
+
+    assert y.tolist() == [1, 0]
+    np.testing.assert_allclose(X.toarray(), [[0.5, 0.0, 2.0], [0.0, 1.0, 0.0]])
+
+
+def test_save_svmfile_writes_lf_line_endings(tmp_path):
+    X = sp.csr_matrix(np.array([[0.0, 1.5], [2.0, 0.0]]))
+    path = tmp_path / "out.svm"
+
+    svmloader.save_svmfile(str(path), X, np.array([1, 0]))
+
+    assert path.read_bytes() == b"1 2:1.5\n0 1:2\n"

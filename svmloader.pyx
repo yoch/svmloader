@@ -69,7 +69,7 @@ cdef _load_svmfile(fp, dtype, ltype, bint zero_based, bint multilabels):
 
         # process the line
         last_idx = -1
-        while s[0] != '#' and s[0] != '\n' and s[0] != 0:
+        while s[0] != '#' and s[0] != '\n' and s[0] != '\r' and s[0] != 0:  # '\r': CRLF line ending
             # get index
             idx = strtol(s, &end, 10)
             if s == end:
@@ -225,7 +225,8 @@ cdef _save_svmfile(filename, mat, labels, bint zero_based,
     cdef Py_ssize_t i
     cdef Py_ssize_t j
     cdef Py_ssize_t offset = 0 if zero_based else 1
-    with open(filename, 'w') as fp:
+    # '\n' line endings on every platform, as libsvm files have
+    with open(filename, 'w', newline='\n') as fp:
         for i in range(indptr.shape[0] - 1):
             if labels is not None:
                 fp.write('%s ' % labels[i])
