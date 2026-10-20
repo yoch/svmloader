@@ -166,6 +166,14 @@ def test_load_crlf_file(tmp_path):
     np.testing.assert_allclose(X.toarray(), [[0.5, 0.0, 2.0], [0.0, 1.0, 0.0]])
 
 
+def test_load_cr_only_file_is_rejected(tmp_path):
+    path = tmp_path / "cr_only.svm"
+    path.write_bytes(DATA.replace("\n", "\r").encode())
+
+    with pytest.raises(ValueError, match="invalid index"):
+        svmloader.load_svmfile(str(path), zero_based=False)
+
+
 def test_save_svmfile_writes_lf_line_endings(tmp_path):
     X = sp.csr_matrix(np.array([[0.0, 1.5], [2.0, 0.0]]))
     path = tmp_path / "out.svm"
