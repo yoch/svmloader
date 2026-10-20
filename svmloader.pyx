@@ -69,7 +69,10 @@ cdef _load_svmfile(fp, dtype, ltype, bint zero_based, bint multilabels):
 
         # process the line
         last_idx = -1
-        while s[0] != '#' and s[0] != '\n' and s[0] != '\r' and s[0] != 0:  # '\r': CRLF line ending
+        # A '\r' ends the line only when followed by '\n' (CRLF) or EOF.
+        # A stray '\r' is left to strtol(), which raises "invalid index".
+        while (s[0] != '#' and s[0] != '\n' and s[0] != 0
+               and not (s[0] == '\r' and (s[1] == '\n' or s[1] == 0))):
             # get index
             idx = strtol(s, &end, 10)
             if s == end:
